@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=H3C Campus Network
+Name[zh_CN]=至诚校园网
+Comment=Interactive wired 802.1X login
+Exec=/usr/bin/h3c-campus-gui
+Terminal=false
+Icon=network-wired
+Categories=Network;
