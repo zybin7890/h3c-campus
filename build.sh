@@ -5,6 +5,7 @@ source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 output_dir=${1:-"$source_dir/dist"}
 version=$(sed -n 's/^Version: //p' "$source_dir/DEBIAN/control")
 stage=$(mktemp -d)
+chmod 755 "$stage"
 trap 'rm -rf -- "$stage"' EXIT
 
 cp -a "$source_dir/DEBIAN" "$source_dir/usr" "$stage/"
