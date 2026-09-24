@@ -1,11 +1,11 @@
 Package: h3c-campus
-Version: 0.2.1-1
+Version: 0.2.4-1
 Section: net
 Priority: optional
 Architecture: all
 Maintainer: Local package builder <local@localhost>
-Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-3.0, iproute2
+Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-3.0, gir1.2-gdkpixbuf-2.0, iproute2
 Recommends: pkexec
 Description: H3C EAP-MD5 campus client with desktop interface
  Independent Python implementation for a wired campus connection.
- Prompts for credentials without storing them.
+ Desktop prompts without storing credentials; optional scheduled login uses a root-only password file.

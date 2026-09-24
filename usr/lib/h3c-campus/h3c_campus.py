@@ -18,7 +18,7 @@ import time
 from h3c_protocol import (identity_data, make_frame, make_response,
                           md5_data, parse_frame)
 
-CLIENT_VERSION = '0.2.1'
+CLIENT_VERSION = '0.2.4'
 # Decoded from a successful E0645 Identity frame; this is a version descriptor,
 # not a captured authentication response, account, or password.
 SITE_VERSION = bytes.fromhex('43481156372e33302d30363435000000')
@@ -28,6 +28,14 @@ PAE_GROUP = bytes.fromhex('0180c2000003')
 
 def log(event: str, message: str = '') -> None:
     print(time.strftime('%Y-%m-%d %H:%M:%S'), event, message, flush=True)
+    if event == 'AUTH_SUCCESS' and (address := os.environ.get('NOTIFY_SOCKET')):
+        if address.startswith('@'):
+            address = '\0' + address[1:]
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as notifier:
+                notifier.sendto(b'READY=1', address)
+        except OSError:
+            pass
 
 
 class RecoveryBudget:

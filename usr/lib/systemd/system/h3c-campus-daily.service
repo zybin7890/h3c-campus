@@ -3,7 +3,9 @@ Description=H3C campus network daily authentication
 After=network.target
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
+TimeoutStartSec=30
 EnvironmentFile=/etc/h3c-campus/daily.conf
 StandardInput=file:/etc/h3c-campus/password
 ExecStart=/usr/bin/h3c-campus --interface ${INTERFACE} --username ${USERNAME} --password-stdin --renew-dhcp

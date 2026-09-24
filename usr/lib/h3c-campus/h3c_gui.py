@@ -12,18 +12,21 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, GLib, Gtk
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 from h3c_campus import interfaces
 
 AUTOSTART = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart/h3c-campus.desktop"
+ICON = str(Path(__file__).resolve().parents[2] / "share/pixmaps/h3c-campus.png")
+TRAY_ICON = str(Path(__file__).resolve().parents[2] / "share/pixmaps/h3c-campus-tray.png")
 AUTOSTART_CONTENT = """[Desktop Entry]
 Type=Application
 Name=H3C Campus Network
 Name[zh_CN]=至诚校园网
 Exec=/usr/bin/h3c-campus-gui --minimized
 Terminal=false
-Icon=network-wired
+Icon=h3c-campus
 Categories=Network;
 X-H3C-Campus=true
 """
@@ -33,8 +36,10 @@ class CampusWindow:
     def __init__(self, minimized=False):
         self.process = None
         self.stopping = False
+        self.daily_notified = False
         self.updating_autostart = False
         self.window = Gtk.Window(title="至诚校园网")
+        self.window.set_icon_from_file(ICON)
         self.window.set_default_size(560, 390)
         self.window.connect("delete-event", self.on_delete)
         self.window.connect("window-state-event", self.on_window_state)
@@ -90,7 +95,8 @@ class CampusWindow:
 
         # ponytail: GTK StatusIcon uses KDE's XEmbed bridge; use StatusNotifier
         # if support for Wayland desktops without a bridge becomes necessary.
-        self.tray = Gtk.StatusIcon.new_from_icon_name("network-wired")
+        tray_pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(TRAY_ICON, 24, 24, True)
+        self.tray = Gtk.StatusIcon.new_from_pixbuf(tray_pixbuf)
         self.tray.set_tooltip_text("至诚校园网")
         self.tray.set_visible(True)
         self.tray.connect("activate", lambda *_: self.show())
@@ -148,6 +154,18 @@ class CampusWindow:
         except (OSError, subprocess.TimeoutExpired):
             return False
 
+    def notify_connected(self):
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            bus.call("org.freedesktop.Notifications", "/org/freedesktop/Notifications",
+                     "org.freedesktop.Notifications", "Notify",
+                     GLib.Variant("(susssasa{sv}i)",
+                                  ("H3C Campus", 0, "h3c-campus", "至诚校园网",
+                                   "校园网认证成功", [], {}, 5000)),
+                     None, Gio.DBusCallFlags.NONE, 2000, None, None)
+        except GLib.Error:
+            pass
+
     def check_daily_service(self):
         if self.process is None:
             active = self.daily_service_active()
@@ -155,8 +173,13 @@ class CampusWindow:
             self.disconnect_button.set_sensitive(active)
             if active:
                 self.status.set_text("定时服务运行中")
+                if not self.daily_notified:
+                    self.notify_connected()
+                    self.daily_notified = True
             elif self.status.get_text() == "定时服务运行中":
                 self.status.set_text("未连接")
+            if not active:
+                self.daily_notified = False
         return True
 
     def connect(self, *_):
@@ -210,6 +233,7 @@ class CampusWindow:
             self.status.set_text("认证成功，等待 IPv4")
         elif event == "IPV4_PRESENT":
             self.status.set_text("已连接")
+            self.notify_connected()
         elif event in {"AUTH_REJECTED", "AUTH_TIMEOUT", "NO_EAPOL_REPLY", "ERROR"}:
             self.status.set_text("连接失败")
         return False
