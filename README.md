@@ -8,12 +8,12 @@ Debian 有线校园网 802.1X/EAP-MD5 客户端，含桌面界面与命令行。
 
 ```sh
 ./build.sh
-sudo apt install ./dist/h3c-campus_0.2.5-1_all.deb
+sudo apt install ./dist/h3c-campus_0.2.6-1_all.deb
 ```
 
 从应用菜单打开“至诚校园网”，选择有线网卡，输入账号和密码，点“连接”。授权窗口通过 `run0` 或 `pkexec` 获取原始网卡访问权。界面显示认证、IPv4 状态与事件；认证成功后发桌面提醒。“断开”发送下线报文。窗口关闭或最小化后驻留托盘；在托盘菜单点“退出”才会结束客户端。勾选“登录桌面时启动”可设置当前用户的 XDG 自启动，启动时最小化到托盘。密码只经标准输入传给客户端，不写入命令参数；桌面界面不保存密码。
 
-每日 06:00 自动登入可启用 `h3c-campus-daily.timer`。管理员须先创建仅 root 可读的 `/etc/h3c-campus/daily.conf`（`INTERFACE`、`USERNAME`）及 `/etc/h3c-campus/password`（单行密码，权限 `0600`），再执行 `systemctl enable --now h3c-campus-daily.timer`。定时器不补跑错过的时刻；认证进程持续运行，需断开时执行 `systemctl stop h3c-campus-daily.service`。桌面界面的手动“连接”勿与定时服务同时运行。
+每日 06:00 自动登入可启用 `h3c-campus-daily.timer`。管理员须先创建仅 root 可读的 `/etc/h3c-campus/daily.conf`（`INTERFACE`、`USERNAME`）及 `/etc/h3c-campus/password`（单行密码，权限 `0600`），再执行 `systemctl enable --now h3c-campus-daily.timer`。定时器每日重启认证进程以重新登入，不补跑错过的时刻；其余时间认证进程持续运行，需断开时执行 `systemctl stop h3c-campus-daily.service`。桌面界面的手动“连接”勿与定时服务同时运行。
 
 已有其他 802.1X 客户端时，先退出同一网卡上的旧客户端。NetworkManager 有线连接宜设为自动 IPv4。本程序不覆盖 IP、路由或 DNS 配置；认证后仅请求现有网络管理器续租 DHCP。
 

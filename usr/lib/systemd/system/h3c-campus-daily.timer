@@ -4,7 +4,7 @@ Description=Start H3C campus login daily at 06:00
 [Timer]
 OnCalendar=*-*-* 06:00:00
 Persistent=false
-Unit=h3c-campus-daily.service
+Unit=h3c-campus-daily-refresh.service
 
 [Install]
 WantedBy=timers.target

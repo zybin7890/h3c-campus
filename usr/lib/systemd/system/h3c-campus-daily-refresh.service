@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart H3C campus network daily authentication
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart h3c-campus-daily.service
