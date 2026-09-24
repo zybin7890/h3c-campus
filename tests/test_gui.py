@@ -13,6 +13,11 @@ import h3c_campus
 
 
 class GuiTest(unittest.TestCase):
+    def test_display_version_matches_package(self):
+        control = (Path(__file__).resolve().parents[1] / "DEBIAN/control").read_text()
+        self.assertIn(f"Version: {h3c_gui.CLIENT_VERSION}-1", control)
+        self.assertEqual(h3c_gui.CLIENT_VERSION, h3c_campus.CLIENT_VERSION)
+
     def setUp(self):
         self.devices = patch("h3c_gui.interfaces", return_value=[
             {"name": "eth0", "physical": True, "state": "up"}

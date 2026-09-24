@@ -15,7 +15,7 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
-from h3c_campus import interfaces
+from h3c_campus import CLIENT_VERSION, interfaces
 
 AUTOSTART = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart/h3c-campus.desktop"
 ICON = str(Path(__file__).resolve().parents[2] / "share/pixmaps/h3c-campus.png")
@@ -23,7 +23,7 @@ TRAY_ICON = str(Path(__file__).resolve().parents[2] / "share/pixmaps/h3c-campus-
 AUTOSTART_CONTENT = """[Desktop Entry]
 Type=Application
 Name=H3C Campus Network
-Name[zh_CN]=至诚校园网
+Name[zh_CN]=福大校园网
 Exec=/usr/bin/h3c-campus-gui --minimized
 Terminal=false
 Icon=h3c-campus
@@ -38,7 +38,7 @@ class CampusWindow:
         self.stopping = False
         self.daily_notified = False
         self.updating_autostart = False
-        self.window = Gtk.Window(title="至诚校园网")
+        self.window = Gtk.Window(title="福大校园网")
         self.window.set_icon_from_file(ICON)
         self.window.set_default_size(560, 390)
         self.window.connect("delete-event", self.on_delete)
@@ -100,7 +100,7 @@ class CampusWindow:
         # if support for Wayland desktops without a bridge becomes necessary.
         tray_pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(TRAY_ICON, 24, 24, True)
         self.tray = Gtk.StatusIcon.new_from_pixbuf(tray_pixbuf)
-        self.tray.set_tooltip_text("至诚校园网")
+        self.tray.set_tooltip_text("福大校园网")
         self.tray.set_visible(True)
         self.tray.connect("activate", lambda *_: self.show())
         self.tray.connect("popup-menu", self.show_tray_menu)
@@ -163,7 +163,7 @@ class CampusWindow:
             bus.call("org.freedesktop.Notifications", "/org/freedesktop/Notifications",
                      "org.freedesktop.Notifications", "Notify",
                      GLib.Variant("(susssasa{sv}i)",
-                                  ("H3C Campus", 0, "h3c-campus", "至诚校园网",
+                                  ("H3C Campus", 0, "h3c-campus", "福大校园网",
                                    "校园网认证成功", [], {}, 5000)),
                      None, Gio.DBusCallFlags.NONE, 2000, None, None)
         except GLib.Error:
@@ -283,7 +283,7 @@ class CampusWindow:
     def show_about(self, *_):
         dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
         dialog.set_program_name("H3C Campus Network")
-        dialog.set_version("0.2.5")
+        dialog.set_version(CLIENT_VERSION)
         dialog.set_comments("非官方软件；无担保。源码可依 AGPL-3.0 再分发。")
         dialog.set_license_type(Gtk.License.AGPL_3_0)
         dialog.set_website("https://github.com/zybin7890/h3c-campus")
