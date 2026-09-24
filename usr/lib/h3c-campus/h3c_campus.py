@@ -18,7 +18,7 @@ import time
 from h3c_protocol import (identity_data, make_frame, make_response,
                           md5_data, parse_frame)
 
-CLIENT_VERSION = '0.2.4'
+CLIENT_VERSION = '0.2.5'
 # Decoded from a successful E0645 Identity frame; this is a version descriptor,
 # not a captured authentication response, account, or password.
 SITE_VERSION = bytes.fromhex('43481156372e33302d30363435000000')

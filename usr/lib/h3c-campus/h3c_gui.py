@@ -78,6 +78,9 @@ class CampusWindow:
         self.disconnect_button.set_sensitive(False)
         self.disconnect_button.connect("clicked", self.disconnect)
         actions.pack_start(self.disconnect_button, False, False, 0)
+        about_button = Gtk.Button(label="关于")
+        about_button.connect("clicked", self.show_about)
+        actions.pack_start(about_button, False, False, 0)
         self.status = Gtk.Label(label="未连接")
         actions.pack_end(self.status, False, False, 0)
         grid.attach(actions, 0, 3, 2, 1)
@@ -277,9 +280,20 @@ class CampusWindow:
         self.window.deiconify()
         self.window.present()
 
+    def show_about(self, *_):
+        dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
+        dialog.set_program_name("H3C Campus Network")
+        dialog.set_version("0.2.5")
+        dialog.set_comments("非官方软件；无担保。源码可依 AGPL-3.0 再分发。")
+        dialog.set_license_type(Gtk.License.AGPL_3_0)
+        dialog.set_website("https://github.com/zybin7890/h3c-campus")
+        dialog.run()
+        dialog.destroy()
+
     def show_tray_menu(self, _icon, button, time):
         menu = Gtk.Menu()
-        for label, action in (("显示", self.show), ("断开", self.disconnect), ("退出", self.quit)):
+        for label, action in (("显示", self.show), ("断开", self.disconnect),
+                              ("关于", self.show_about), ("退出", self.quit)):
             item = Gtk.MenuItem(label=label)
             item.connect("activate", lambda _item, callback=action: callback())
             menu.append(item)

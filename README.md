@@ -8,7 +8,7 @@ Debian 有线校园网 802.1X/EAP-MD5 客户端，含桌面界面与命令行。
 
 ```sh
 ./build.sh
-sudo apt install ./dist/h3c-campus_0.2.4-1_all.deb
+sudo apt install ./dist/h3c-campus_0.2.5-1_all.deb
 ```
 
 从应用菜单打开“至诚校园网”，选择有线网卡，输入账号和密码，点“连接”。授权窗口通过 `run0` 或 `pkexec` 获取原始网卡访问权。界面显示认证、IPv4 状态与事件；认证成功后发桌面提醒。“断开”发送下线报文。窗口关闭或最小化后驻留托盘；在托盘菜单点“退出”才会结束客户端。勾选“登录桌面时启动”可设置当前用户的 XDG 自启动，启动时最小化到托盘。密码只经标准输入传给客户端，不写入命令参数；桌面界面不保存密码。
@@ -45,4 +45,4 @@ python3 -m unittest discover -s tests -v
 ./build.sh
 ```
 
-运行界面需 GTK 3 与 PyGObject（Debian 包自动安装）；认证需 Linux `AF_PACKET` 与 `CAP_NET_RAW`。托盘依赖桌面环境支持 XEmbed 状态图标，已在 KDE 测试。源码许可见 [LICENSE](LICENSE)。图标为[福州大学校徽](https://www.fzu.edu.cn/xxgk/xbxx.htm)，由用户提供，不在 MIT 许可范围内；本软件非学校官方产品。
+运行界面需 GTK 3 与 PyGObject（Debian 包自动安装）；认证需 Linux `AF_PACKET` 与 `CAP_NET_RAW`。托盘依赖桌面环境支持 XEmbed 状态图标，已在 KDE 测试。源码依 [AGPL-3.0-only](LICENSE) 开源；本软件非学校官方产品。
