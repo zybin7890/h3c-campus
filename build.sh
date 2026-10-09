@@ -9,6 +9,8 @@ chmod 755 "$stage"
 trap 'rm -rf -- "$stage"' EXIT
 
 cp -a "$source_dir/DEBIAN" "$source_dir/usr" "$stage/"
+find "$stage/usr" -type d -name __pycache__ -prune -exec rm -rf -- {} +
+find "$stage/usr" -type f -name "*.pyc" -delete
 mkdir -p "$stage/usr/share/doc/h3c-campus"
 cp "$source_dir/README.md" "$stage/usr/share/doc/h3c-campus/README.md"
 cp "$source_dir/LICENSE" "$stage/usr/share/doc/h3c-campus/copyright"

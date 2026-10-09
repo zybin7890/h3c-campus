@@ -9,6 +9,10 @@ import sys
 import threading
 from pathlib import Path
 
+# Gtk.StatusIcon requires XEmbed; use KDE's existing Xwayland bridge.
+if os.environ.get("DISPLAY"):
+    os.environ["GDK_BACKEND"] = "x11"
+
 import gi
 
 gi.require_version("Gtk", "3.0")
