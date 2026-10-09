@@ -19,6 +19,16 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(h3c_gui.CLIENT_VERSION, h3c_campus.CLIENT_VERSION)
 
     def setUp(self):
+        self.home = tempfile.TemporaryDirectory(prefix="h3c-gui-test-")
+        self.environment = patch.dict(os.environ, {
+            "HOME": self.home.name,
+            "XDG_CONFIG_HOME": str(Path(self.home.name) / ".config"),
+            "XDG_DATA_HOME": str(Path(self.home.name) / ".local/share"),
+        })
+        self.environment.start()
+        self.autostart_path = patch.object(h3c_gui, "AUTOSTART",
+                                          Path(self.home.name) / ".config/autostart/h3c-campus.desktop")
+        self.autostart_path.start()
         self.devices = patch("h3c_gui.interfaces", return_value=[
             {"name": "eth0", "physical": True, "state": "up"}
         ])
@@ -33,6 +43,9 @@ class GuiTest(unittest.TestCase):
         self.window.window.destroy()
         self.devices.stop()
         self.notifications.stop()
+        self.autostart_path.stop()
+        self.environment.stop()
+        self.home.cleanup()
 
     def test_password_uses_stdin_only(self):
         with patch("h3c_gui.shutil.which", return_value="/usr/bin/run0"), \
@@ -47,6 +60,38 @@ class GuiTest(unittest.TestCase):
             self.assertIn("--password-stdin", popen.call_args.args[0])
             process.stdin.write.assert_called_once_with("sample-secret\n")
             self.assertEqual(self.window.password.get_text(), "")
+
+    def test_first_run_enables_remember_login_and_autostart(self):
+        self.assertTrue(self.window.remember.get_active())
+        self.assertTrue(self.window.auto_login.get_active())
+        self.assertTrue(self.window.autostart.get_active())
+
+    def test_disabling_remember_revokes_saved_credentials(self):
+        self.window.credentials.save("sample-user", "sample-password")
+        self.window.remember.set_active(False)
+        self.assertIsNone(self.window.credentials.load())
+        self.assertFalse(self.window.credentials.key.exists())
+        self.assertFalse(self.window.auto_login.get_active())
+
+    def test_minimized_login_reloads_credentials_and_passes_password_over_stdin(self):
+        self.window.credentials.save("sample-user", "sample-password")
+        with patch.object(h3c_gui.CampusWindow, "daily_service_active", return_value=False), \
+                patch("h3c_gui.shutil.which", return_value="/usr/bin/run0"), \
+                patch("h3c_gui.subprocess.Popen") as popen, \
+                patch("h3c_gui.threading.Thread"):
+            process = Mock()
+            popen.return_value = process
+            reopened = h3c_gui.CampusWindow(minimized=True)
+            try:
+                self.assertFalse(reopened.window.get_visible())
+                self.assertEqual(reopened.username.get_text(), "sample-user")
+                reopened.auto_connect()
+                process.stdin.write.assert_called_once_with("sample-password\n")
+                self.assertNotIn("sample-password", popen.call_args.args[0])
+                self.assertEqual(reopened.password.get_text(), "")
+            finally:
+                reopened.tray.set_visible(False)
+                reopened.window.destroy()
 
     def test_autostart_only_removes_its_own_file(self):
         with tempfile.TemporaryDirectory() as directory, \

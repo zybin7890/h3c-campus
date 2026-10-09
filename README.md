@@ -8,10 +8,12 @@ Debian 有线校园网 802.1X/EAP-MD5 客户端，含桌面界面与命令行。
 
 ```sh
 ./build.sh
-sudo apt install ./dist/h3c-campus_0.2.7-1_all.deb
+sudo apt install ./dist/h3c-campus_0.2.8-1_all.deb
 ```
 
-从应用菜单打开“福大校园网”，选择有线网卡，输入账号和密码，点“连接”。授权窗口通过 `run0` 或 `pkexec` 获取原始网卡访问权。界面显示认证、IPv4 状态与事件；认证成功后发桌面提醒。“断开”发送下线报文。窗口关闭或最小化后驻留托盘；在托盘菜单点“退出”才会结束客户端。勾选“登录桌面时启动”可设置当前用户的 XDG 自启动，启动时最小化到托盘。密码只经标准输入传给客户端，不写入命令参数；桌面界面不保存密码。
+从应用菜单打开“福大校园网”，选择有线网卡，输入账号和密码，点“连接”。授权窗口通过 `run0` 或 `pkexec` 获取原始网卡访问权。界面显示认证、IPv4 状态与事件；认证成功后发桌面提醒。“断开”发送下线报文。窗口关闭或最小化后驻留托盘；在托盘菜单点“退出”才会结束客户端。
+
+首次打开默认勾选“记住账号和密码”“自动登录”和“登录桌面时启动”。连接时保存凭证，下一次登录桌面时静默启动并使用保存的凭证认证；尚未保存凭证时只在托盘等待。可以分别关闭自动登录或自启动，取消记住后清除已保存的凭证。密码只经标准输入传给认证客户端，不写入命令参数。账号密码使用 AES-256-GCM 保存于 `~/.config/h3c-campus/credentials.enc`，随机密钥独立保存在 `~/.local/share/h3c-campus/credential.key`，目录权限 `0700`、文件权限 `0600`。加密用于避免凭证明文落盘；能够读取这两个文件的当前用户或管理员仍可解密。普通用户自动认证仍需 `run0` 或 `pkexec` 授权，不会绕过原始网卡访问权限。
 
 每日 06:00 自动登入可启用 `h3c-campus-daily.timer`。管理员须先创建仅 root 可读的 `/etc/h3c-campus/daily.conf`（`INTERFACE`、`USERNAME`）及 `/etc/h3c-campus/password`（单行密码，权限 `0600`），再执行 `systemctl enable --now h3c-campus-daily.timer`。定时器每日重启认证进程以重新登入，不补跑错过的时刻；其余时间认证进程持续运行，需断开时执行 `systemctl stop h3c-campus-daily.service`。桌面界面的手动“连接”勿与定时服务同时运行。
 
@@ -45,4 +47,4 @@ python3 -m unittest discover -s tests -v
 ./build.sh
 ```
 
-运行界面需 GTK 3 与 PyGObject（Debian 包自动安装）；认证需 Linux `AF_PACKET` 与 `CAP_NET_RAW`。托盘依赖桌面环境支持 XEmbed 状态图标，已在 KDE 测试。源码依 [AGPL-3.0-only](LICENSE) 开源；本软件非学校官方产品。
+运行界面需 GTK 3、PyGObject 与 cryptography（Debian 包自动安装）；认证需 Linux `AF_PACKET` 与 `CAP_NET_RAW`。托盘依赖桌面环境支持 XEmbed 状态图标，已在 KDE 测试。源码依 [AGPL-3.0-only](LICENSE) 开源；本软件非学校官方产品。

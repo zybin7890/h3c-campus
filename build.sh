@@ -9,6 +9,7 @@ chmod 755 "$stage"
 trap 'rm -rf -- "$stage"' EXIT
 
 cp -a "$source_dir/DEBIAN" "$source_dir/usr" "$stage/"
+mkdir -p "$stage/usr/share/doc/h3c-campus"
 cp "$source_dir/README.md" "$stage/usr/share/doc/h3c-campus/README.md"
 cp "$source_dir/LICENSE" "$stage/usr/share/doc/h3c-campus/copyright"
 mkdir -p "$output_dir"

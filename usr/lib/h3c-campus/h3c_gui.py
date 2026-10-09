@@ -2,6 +2,7 @@
 """GTK desktop front end; authentication stays in the existing CLI."""
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,7 @@ gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 from h3c_campus import CLIENT_VERSION, interfaces
+from h3c_credentials import CredentialStore
 
 AUTOSTART = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart/h3c-campus.desktop"
 ICON = str(Path(__file__).resolve().parents[2] / "share/pixmaps/h3c-campus.png")
@@ -35,6 +37,12 @@ X-H3C-Campus=true
 class CampusWindow:
     def __init__(self, minimized=False):
         self.process = None
+        self.credentials = CredentialStore()
+        self.preferences_path = self.credentials.directory / "preferences.json"
+        try:
+            self.preferences = json.loads(self.preferences_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            self.preferences = {}
         self.stopping = False
         self.daily_notified = False
         self.updating_autostart = False
@@ -85,16 +93,25 @@ class CampusWindow:
         actions.pack_end(self.status, False, False, 0)
         grid.attach(actions, 0, 3, 2, 1)
 
-        self.autostart = Gtk.CheckButton(label="登录桌面时启动（最小化到托盘）")
+        self.remember = Gtk.CheckButton(label="记住账号密码（加密保存）")
+        self.remember.set_active(self.preferences.get("remember", True))
+        self.remember.connect("toggled", self.on_remember)
+        grid.attach(self.remember, 0, 4, 2, 1)
+        self.auto_login = Gtk.CheckButton(label="启动时自动登录")
+        self.auto_login.set_active(self.preferences.get("auto_login", True))
+        self.auto_login.set_sensitive(self.remember.get_active())
+        self.auto_login.connect("toggled", self.on_preferences)
+        grid.attach(self.auto_login, 0, 5, 2, 1)
+        self.autostart = Gtk.CheckButton(label="登录桌面时静默启动（托盘）")
         self.autostart.set_active(self.autostart_enabled())
         self.autostart.connect("toggled", self.on_autostart)
-        grid.attach(self.autostart, 0, 4, 2, 1)
+        grid.attach(self.autostart, 0, 6, 2, 1)
 
         self.output = Gtk.TextView(editable=False, cursor_visible=False, wrap_mode=Gtk.WrapMode.WORD)
         scroll = Gtk.ScrolledWindow()
         scroll.set_vexpand(True)
         scroll.add(self.output)
-        grid.attach(scroll, 0, 5, 2, 1)
+        grid.attach(scroll, 0, 7, 2, 1)
 
         # ponytail: GTK StatusIcon uses KDE's XEmbed bridge; use StatusNotifier
         # if support for Wayland desktops without a bridge becomes necessary.
@@ -104,19 +121,78 @@ class CampusWindow:
         self.tray.set_visible(True)
         self.tray.connect("activate", lambda *_: self.show())
         self.tray.connect("popup-menu", self.show_tray_menu)
-        self.window.show_all()
+        grid.show_all()
+        self.window.realize()
+        if not minimized:
+            self.window.show_all()
+        self.restore_credentials()
         self.check_daily_service()
         GLib.timeout_add_seconds(3, self.check_daily_service)
+        if not self.preferences.get("autostart_initialized", False):
+            self.preferences["autostart_initialized"] = True
+            if not AUTOSTART.exists():
+                self.autostart.set_active(True)
+            self.on_preferences()
         if minimized:
             self.hide_attempts = 0
             GLib.timeout_add_seconds(1, self.hide_on_start)
+            GLib.timeout_add_seconds(3, self.auto_connect)
 
     def hide_on_start(self):
         if self.tray.is_embedded():
             self.window.hide()
             return False
         self.hide_attempts += 1
-        return self.hide_attempts < 5
+        if self.hide_attempts >= 5:
+            self.show()
+            return False
+        return True
+
+    def restore_credentials(self):
+        if not self.remember.get_active():
+            return
+        try:
+            saved = self.credentials.load()
+            if saved:
+                self.username.set_text(saved["username"])
+                self.password.set_text(saved["password"])
+                saved_interface = self.preferences.get("interface")
+                model = self.interface.get_model()
+                for index, row in enumerate(model):
+                    if row[0] == saved_interface:
+                        self.interface.set_active(index)
+                        break
+        except Exception:
+            self.status.set_text("凭证无法读取，请重新填写并保存")
+
+    def on_preferences(self, *_):
+        self.preferences.update(remember=self.remember.get_active(),
+                                auto_login=self.auto_login.get_active(),
+                                interface=self.interface.get_active_text())
+        try:
+            self.credentials.private_directory(self.credentials.directory)
+            self.credentials.write_private(self.preferences_path,
+                json.dumps(self.preferences, ensure_ascii=False).encode())
+        except OSError:
+            self.error("校园网设置保存失败，请检查用户目录权限。")
+
+    def on_remember(self, *_):
+        enabled = self.remember.get_active()
+        self.auto_login.set_sensitive(enabled)
+        if not enabled:
+            self.auto_login.set_active(False)
+            try:
+                self.credentials.clear()
+            except OSError:
+                self.error("凭证清除失败，请检查用户目录权限。")
+        self.on_preferences()
+
+    def auto_connect(self):
+        if (self.auto_login.get_active() and self.remember.get_active()
+                and self.process is None and not self.daily_service_active()
+                and self.username.get_text() and self.password.get_text()):
+            self.connect()
+        return False
 
     @staticmethod
     def autostart_enabled():
@@ -144,6 +220,10 @@ class CampusWindow:
             self.error(str(exc))
 
     def error(self, message):
+        if not self.window.get_visible():
+            self.status.set_text(message)
+            self.tray.set_tooltip_text("福大校园网：" + message)
+            return
         dialog = Gtk.MessageDialog(transient_for=self.window, modal=True,
                                    message_type=Gtk.MessageType.ERROR,
                                    buttons=Gtk.ButtonsType.CLOSE, text=message)
@@ -189,9 +269,24 @@ class CampusWindow:
         interface = self.interface.get_active_text()
         username = self.username.get_text().strip()
         password = self.password.get_text()
+        if not password and self.remember.get_active():
+            try:
+                saved = self.credentials.load()
+                if saved and saved["username"] == username:
+                    password = saved["password"]
+            except Exception:
+                self.error("凭证无法读取，请重新填写密码。")
+                return
         if not interface or not username or not password:
             self.error("请选择有线网卡并填写账号、密码。")
             return
+        if self.remember.get_active():
+            try:
+                self.credentials.save(username, password)
+            except Exception:
+                self.error("账号密码加密保存失败，本次未启动连接。")
+                return
+        self.on_preferences()
         helper = next((path for name in ("run0", "pkexec")
                        if (path := shutil.which(name))), None)
         if os.geteuid() != 0 and helper is None:
@@ -277,6 +372,7 @@ class CampusWindow:
         return True
 
     def show(self):
+        self.window.show_all()
         self.window.deiconify()
         self.window.present()
 
@@ -312,6 +408,8 @@ class CampusWindow:
 
 
 def main():
+    GLib.set_prgname("h3c-campus")
+    GLib.set_application_name("福大校园网")
     window = CampusWindow(minimized="--minimized" in sys.argv[1:])
     window.username.grab_focus()
     Gtk.main()
